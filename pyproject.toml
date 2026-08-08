@@ -26,3 +26,6 @@ dev = [
     "pytest-asyncio>=1.4.0",
     "ruff>=0.16.2",
 ]
+
+[project.scripts]
+mission-control = "mission_control.cli:main"
