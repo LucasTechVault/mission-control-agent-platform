@@ -13,7 +13,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
     
-    inference_base_url: AnyHttpUrl = "http://127.0.0.1:8000/v1"
+    inference_base_url: AnyHttpUrl = "http://127.0.0.1:8001/v1"
     model_name: str = "Qwen/Qwen3.6-27B"
     request_timeout_seconds: float = 15.
 
