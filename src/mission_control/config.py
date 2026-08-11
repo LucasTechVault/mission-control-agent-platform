@@ -15,8 +15,8 @@ class Settings(BaseSettings):
     
     inference_base_url: AnyHttpUrl = "http://127.0.0.1:18001/v1"
     model_name: str = "Qwen/Qwen3.6-27B"
-    request_timeout_seconds: float = 30.
+    request_timeout_seconds: float = 60.
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings
+    return Settings()
