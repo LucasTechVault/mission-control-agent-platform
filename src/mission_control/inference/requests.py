@@ -30,7 +30,7 @@ class ModelRequest(BaseModel):
     # lower = deterministic, higher = more "creative"
     temperature: float = Field( 
         default=0.2,
-        ge=0.0
+        ge=0.0,
         le=2.0,
     )
     
