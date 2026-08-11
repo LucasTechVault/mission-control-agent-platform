@@ -62,8 +62,8 @@ async def run_inference(prompt: str) -> None:
         print(f"Finish reason    : {res.finish_reason}")
         print(f"Prompt tokens    : {res.prompt_tokens}")
         print(f"Completion tokens: {res.completion_tokens}")
-        print(f"Total tokens     : {res.completion_tokens}")
-        print(f"Latency          : {res.latency_ms:.2f * 1000} s")
+        print(f"Total tokens     : {res.total_tokens}")
+        print(f"Latency          : {res.latency_ms:.2f} ms")
     
     except ModelGatewayError as exc:
         print()
