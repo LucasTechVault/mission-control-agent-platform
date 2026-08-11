@@ -29,7 +29,7 @@ class _VLLMMessage(BaseModel):
 class _VLLMChoice(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
-    msg: _VLLMMessage
+    message: _VLLMMessage
     finish_reason: str | None = None
 
 # (The Receipt) - Tracks token consumption
@@ -133,15 +133,33 @@ class VLLMModelGateway:
         
         # 3. Validation & Normalization of response - Gateway must validate allowed response
         try:
-            
-            # 3.1 - Validate using specified Pydantic model schema
-            raw = _VLLMResponse.model_validate( 
-                response.json()
+            payload = response.json()
+
+            raw = _VLLMResponse.model_validate(
+                payload
             )
-        
-        except (ValueError, ValidationError) as exc:
+
+        except ValidationError as exc:
+            logger.error(
+                "model_response_validation_failed",
+                request_id=request.request_id,
+                validation_errors=exc.errors(),
+                response_payload=payload,
+            )
+
             raise ModelResponseError(
-                "Inference server returned an invalid response."
+                f"Inference response failed validation: {exc}"
+            ) from exc
+
+        except ValueError as exc:
+            logger.error(
+                "model_response_json_failed",
+                request_id=request.request_id,
+                response_body=response.text,
+            )
+
+            raise ModelResponseError(
+                f"Inference server returned invalid JSON: {exc}"
             ) from exc
         
         if not raw.choices:
