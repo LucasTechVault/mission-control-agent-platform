@@ -2,7 +2,7 @@ import time
 
 import httpx
 import structlog
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from mission_control.config import Settings
 
