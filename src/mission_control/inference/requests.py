@@ -48,3 +48,7 @@ class ModelRequest(BaseModel):
         le=8192,
     )
     
+    enable_thinking: bool = Field(
+        default=False
+    )
+    
