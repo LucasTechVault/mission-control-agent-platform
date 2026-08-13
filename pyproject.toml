@@ -26,6 +26,11 @@ dev = [
     "pytest-asyncio>=1.4.0",
     "ruff>=0.16.2",
 ]
+experiments = [
+    "ipykernel>=7.3.0",
+    "jupyter>=1.1.1",
+    "transformers>=5.15.0",
+]
 
 [project.scripts]
 mission-control = "mission_control.cli:main"
