@@ -42,6 +42,7 @@ class BenchmarkSummary(BaseModel):
     request_throughput_rps: float
     output_throughput_tokens_per_second: float
     
+    # Tail Latency - track worst case, average hides outliers
     p50_ttft_ms: float | None
     p95_ttft_ms: float | None
     
