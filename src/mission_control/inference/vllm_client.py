@@ -65,7 +65,12 @@ class VLLMModelGateway:
         ) -> None:
         self._settings = settings
         self._client = client or httpx.AsyncClient( # single, shared connection pool
-            timeout=settings.request_timeout_seconds
+            timeout=httpx.Timeout(
+                connect=10.0, # connection cannot hang forever
+                read=None, # we implementing Mission Control timeout ourselves
+                write=10.0, # writes cannot hang forever
+                pool=10.0 # pool acquisition cannot hang forever
+            )
         )
         self._owns_client = client is None # use for clean up
     

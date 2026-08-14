@@ -90,6 +90,26 @@ def main() -> None:
         help="Prompt to send to the configured inference model.",
     )
     
+    parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="Stream generated output as it arrives"
+    )
+    
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=None,
+        help="Total inference deadline in seconds."
+    )
+    
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=512,
+        help="Maximum number of generated tokens."
+    )
+    
     args = parser.parse_args()
     
     asyncio.run(
