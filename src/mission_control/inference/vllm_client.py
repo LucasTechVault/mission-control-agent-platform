@@ -84,7 +84,7 @@ class VLLMModelGateway:
             "stream": False,
             "chat_template_kwargs": {
                 "enable_thinking": request.enable_thinking
-            }
+            },
         }
         
         logger.info(
@@ -95,6 +95,19 @@ class VLLMModelGateway:
             max_tokens=request.max_tokens,
             enable_thinking=request.enable_thinking,
         )
+        
+        # 1.1 Handle domain contract response schema
+        if request.response_schema is not None:
+            payload["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": (
+                        request.response_schema_name or
+                        "mission-control-response"
+                    ),
+                    "schema": request.response_schema,
+                },
+            }
         
         # 2. Send request
         started = time.perf_counter()
