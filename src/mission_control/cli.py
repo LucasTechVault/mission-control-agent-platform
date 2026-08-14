@@ -151,6 +151,7 @@ def main() -> None:
         help="Prompt to send to the configured inference model.",
     )
     
+    # Parsers added after M01-I09 Streaming Impl
     parser.add_argument(
         "--stream",
         action="store_true",
@@ -173,9 +174,20 @@ def main() -> None:
     
     args = parser.parse_args()
     
-    asyncio.run(
-        run_inference(args.prompt)
-    )
+    try:
+        asyncio.run(
+            run_inference(
+                    args.prompt,
+                    streams=args.stream,
+                    timeout=args.timeout,
+                    max_tokens=args.max_tokens,
+                    )
+        )
+        
+    except KeyboardInterrupt:
+        print()
+        print("Mission Control request cancelled.")
+
 
 if __name__ == "__main__":
     main()
