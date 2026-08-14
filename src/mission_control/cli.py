@@ -37,8 +37,9 @@ async def run_inference(
         ],
         temperature=0.2, # fairly deterministic
         top_p=0.8, # cum_prob > 0.8 for choices
-        max_tokens=512,
-        enable_thinking=False
+        max_tokens=max_tokens,
+        enable_thinking=False,
+        timeout_seconds=timeout
     )
     
     try:
@@ -96,35 +97,35 @@ async def run_inference(
                     f"Total Latency     :"
                     f"{final_event.elapsed_ms:.2f} ms"
                 )
-            else: # Non-streaming output
-                res = await gateway.generate(req)
-                   
+        else: # Non-streaming output
+            res = await gateway.generate(req)
+                
+            print()
+            print("=" * 60)
+            print("MISSION CONTROL - HTTP REQUEST")
+            print("=" * 60)
+            
+            print()
+            print("Response:")
+            print(res.text)
+            
+            if res.reasoning:
                 print()
-                print("=" * 60)
-                print("MISSION CONTROL - HTTP REQUEST")
-                print("=" * 60)
-                
-                print()
-                print("Response:")
-                print(res.text)
-                
-                if res.reasoning:
-                    print()
-                    print("Reasoning:")
-                    print(res.reasoning)
-                
-                print()
-                print('-' * 60)
-                print("Inference Metadata")
-                print('-' * 60)
-                
-                print(f"Request ID       : {res.request_id}")
-                print(f"Model            : {res.model}")
-                print(f"Finish reason    : {res.finish_reason}")
-                print(f"Prompt tokens    : {res.prompt_tokens}")
-                print(f"Completion tokens: {res.completion_tokens}")
-                print(f"Total tokens     : {res.total_tokens}")
-                print(f"Latency          : {res.latency_ms:.2f} ms")
+                print("Reasoning:")
+                print(res.reasoning)
+            
+            print()
+            print('-' * 60)
+            print("Inference Metadata")
+            print('-' * 60)
+            
+            print(f"Request ID       : {res.request_id}")
+            print(f"Model            : {res.model}")
+            print(f"Finish reason    : {res.finish_reason}")
+            print(f"Prompt tokens    : {res.prompt_tokens}")
+            print(f"Completion tokens: {res.completion_tokens}")
+            print(f"Total tokens     : {res.total_tokens}")
+            print(f"Latency          : {res.latency_ms:.2f} ms")
     
     except ModelGatewayError as exc:
         print()
