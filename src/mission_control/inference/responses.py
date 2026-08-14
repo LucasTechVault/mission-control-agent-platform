@@ -22,30 +22,30 @@ class ModelResponse(BaseModel):
     
     latency_ms: float # total round trip time taken (including network overhead)
     
-    class ModelStreamEvent(BaseModel):
-        """_summary_
-        One normalized event from a streaming model generation.
-        
-        Individual events may contain content, reasoning, completion metadata,
-        or final usage information...
-        """
-        
-        # These fields are ChatLM contracts & shouldn't be customized.
-        model_config = ConfigDict(extra="forbid")
-        
-        request_id: str
-        model: str
-        
-        text_delta: str | None = None
-        reasoning_delta: str | None = None
-        
-        finish_reason: str | None = None
-        
-        prompt_tokens: int | None = None
-        completion_tokens: int | None = None
-        total_tokens: int | None = None
-        
-        elapsed_ms: float
-        time_to_first_token_ms: float | None = None
-        
-        done: bool = False
+class ModelStreamEvent(BaseModel):
+    """_summary_
+    One normalized event from a streaming model generation.
+    
+    Individual events may contain content, reasoning, completion metadata,
+    or final usage information...
+    """
+    
+    # These fields are ChatLM contracts & shouldn't be customized.
+    model_config = ConfigDict(extra="forbid")
+    
+    request_id: str
+    model: str
+    
+    text_delta: str | None = None
+    reasoning_delta: str | None = None
+    
+    finish_reason: str | None = None
+    
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+    
+    elapsed_ms: float
+    time_to_first_token_ms: float | None = None
+    
+    done: bool = False
