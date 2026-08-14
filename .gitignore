@@ -20,3 +20,8 @@ build/
 
 # macOS
 .DS_Store
+
+# Benchmark runtime output
+benchmark-results/*.json
+benchmark-results/*.jsonl
+benchmark-results/*.csv
