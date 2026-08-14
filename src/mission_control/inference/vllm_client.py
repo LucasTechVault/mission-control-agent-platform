@@ -1,4 +1,7 @@
+import asyncio # timeout handling
+import json
 import time
+from collections.abc import AsyncIterator
 
 import httpx
 import structlog
@@ -9,10 +12,14 @@ from mission_control.config import Settings
 from mission_control.inference.gateway import (
     ModelHTTPError,
     ModelResponseError,
-    ModelTransportError
+    ModelTransportError,
+    ModelTimeoutError
 )
 from mission_control.inference.requests import ModelRequest
-from mission_control.inference.responses import ModelResponse
+from mission_control.inference.responses import (
+    ModelResponse,
+    ModelStreamEvent,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -62,41 +69,40 @@ class VLLMModelGateway:
         )
         self._owns_client = client is None # use for clean up
     
-    async def generate(
+    # timeout helper to resolve timeout duration
+    # can be per-request, else from app default
+    def _timeout_seconds(
         self,
         request: ModelRequest,
-    ) -> ModelResponse:
-        
-        # 1. Build Payload
-        url = (
-            f"{str(self._settings.inference_base_url).rstrip('/')}"
-            "/chat/completions"
+    ) -> float:
+        return (
+            request.timeout_seconds or
+            self._settings.request_timeout_seconds
         )
-        
+    
+    # centralize payload construction
+    def _build_payload(
+        self,
+        request: ModelRequest,
+        *,
+        stream: bool,
+    ) -> dict:
         payload = {
             "model": self._settings.model_name,
             "messages": [
-                msg.model_dump() for msg in request.messages # convert Pydantic Obj models to Plain dict for serdes
+                msg.model_dump()
+                for msg in request.messages # convert Pydantic Obj models to Plain dict for serdes
             ],
             "temperature": request.temperature,
             "top_p": request.top_p,
             "max_tokens": request.max_tokens,
-            "stream": False,
+            "stream": stream,
             "chat_template_kwargs": {
                 "enable_thinking": request.enable_thinking
             },
         }
         
-        logger.info(
-            "model_request_started",
-            request_id=request.request_id,
-            model=self._settings.model_name,
-            message_count=len(request.messages),
-            max_tokens=request.max_tokens,
-            enable_thinking=request.enable_thinking,
-        )
-        
-        # 1.1 Handle domain contract response schema
+        # Handle domain contract response schema
         if request.response_schema is not None:
             payload["response_format"] = {
                 "type": "json_schema",
@@ -109,24 +115,75 @@ class VLLMModelGateway:
                 },
             }
         
+        # Handle streaming
+        if stream:
+            payload["stream_options"] = {
+                "include_usage": True # streaming OpenAI-compatible API usually omit token usage by default to save bandwidth
+            }
+        
+        return payload
+    
+    async def generate(
+        self,
+        request: ModelRequest,
+    ) -> ModelResponse:
+        
+        # 1. Build Payload
+        url = (
+            f"{str(self._settings.inference_base_url).rstrip('/')}"
+            "/chat/completions"
+        )
+        
+        payload = self._build_payload(request, stream=False)
+        timeout_seconds = self._timeout_seconds(request)
+        
+        logger.info(
+            "model_request_started",
+            request_id=request.request_id,
+            model=self._settings.model_name,
+            message_count=len(request.messages),
+            max_tokens=request.max_tokens,
+            enable_thinking=request.enable_thinking,
+        )
+                
         # 2. Send request
         started = time.perf_counter()
         
-        try: # To handle network exceptions
-            response = await self._client.post(
-                url,
-                json=payload,
-                headers={
-                    "X-Request-ID": request.request_id,
-                },
-            )
+        try:
+            # asyncio.timeout enforces network-level timeout
+            async with asyncio.timeout(timeout_seconds):
+                response = await self._client.post(
+                    url,
+                    json=payload,
+                    headers={
+                        "X-Request-ID": request.request_id,
+                    },
+                )
 
-            response.raise_for_status()
+                response.raise_for_status()
+                
+        except TimeoutError as exc:
+            raise ModelTimeoutError(
+                f"Model request exceeded "
+                f"{timeout_seconds:.2f}s"
+                f"{request.request_id}"
+            ) from exc
         
+        # Catch underlying network / HTTPx inactivity timeouts
         except httpx.TimeoutException as exc:
             raise ModelTransportError(
                 f"Model request timed out: {request.request_id}"
             ) from exc
+        
+        # Catch external cancellation signals
+        except asyncio.CancelledError:
+            logger.info(
+                "model_request_cancelled",
+                request_id=request.request_id,
+                model=self._settings.model_name
+            )
+            # Cancellation is control flow. Do not swallow it
+            raise
 
         except httpx.RequestError as exc:
             raise ModelTransportError(
@@ -144,10 +201,11 @@ class VLLMModelGateway:
             time.perf_counter() - started
         ) * 1000.0
         
-        # 3. Validation & Normalization of response - Gateway must validate allowed response
+        # 3. Validation & Normalization of response
         try:
             payload = response.json()
 
+            # Pydantic Object Validation
             raw = _VLLMResponse.model_validate(
                 payload
             )
@@ -208,7 +266,7 @@ class VLLMModelGateway:
         
         return normalized
     
-    # 4. Cleanup - Async Gateway holds network connection open.
+    # Cleanup - Async Gateway holds network connection open.
     # Need to cleanly shut down when stopping backend server to prevent memory leaks
     async def aclose(self) -> None:
         if self._owns_client:
