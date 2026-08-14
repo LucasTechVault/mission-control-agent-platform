@@ -54,6 +54,11 @@ class ModelRequest(BaseModel):
     
     # Optional structured-output contract
     response_schema: dict[str, Any] | None = None
-    
     response_schema_name: str | None = None
+    
+    # Timeout, None = use app default.
+    timeout_seconds: float | None = Field(
+        default=None,
+        gt=0.0,
+    )
     
