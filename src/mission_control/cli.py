@@ -51,7 +51,7 @@ async def run_inference(
             
             final_event = None
             
-            async for event in gateway.stream(request):
+            async for event in gateway.stream(req):
                 if event.text_delta:
                     print(event.text_delta, end="", flush=True)
                 
@@ -178,7 +178,7 @@ def main() -> None:
         asyncio.run(
             run_inference(
                     args.prompt,
-                    streams=args.stream,
+                    stream=args.stream,
                     timeout=args.timeout,
                     max_tokens=args.max_tokens,
                     )
