@@ -6,7 +6,13 @@ from mission_control.inference.gateway import ModelGatewayError
 from mission_control.inference.requests import ModelMessage, ModelRequest
 from mission_control.inference.vllm_client import VLLMModelGateway
 
-async def run_inference(prompt: str) -> None:
+async def run_inference(
+    prompt: str,
+    *,
+    stream: bool,
+    timeout: float | None,
+    max_tokens: int,
+    ) -> None:
     """Send 1 prompt through Mission Control's inference boundary"""
     
     settings = get_settings()
@@ -36,34 +42,89 @@ async def run_inference(prompt: str) -> None:
     )
     
     try:
-        res = await gateway.generate(req)
-        
-        print()
-        print("=" * 60)
-        print("MISSION CONTROL")
-        print("=" * 60)
-        
-        print()
-        print("Response:")
-        print(res.text)
-        
-        if res.reasoning:
+        if stream:
             print()
-            print("Reasoning:")
-            print(res.reasoning)
-        
-        print()
-        print('-' * 60)
-        print("Inference Metadata")
-        print('-' * 60)
-        
-        print(f"Request ID       : {res.request_id}")
-        print(f"Model            : {res.model}")
-        print(f"Finish reason    : {res.finish_reason}")
-        print(f"Prompt tokens    : {res.prompt_tokens}")
-        print(f"Completion tokens: {res.completion_tokens}")
-        print(f"Total tokens     : {res.total_tokens}")
-        print(f"Latency          : {res.latency_ms:.2f} ms")
+            print("=" * 40)
+            print("MISSION CONTROL - STREAMING")
+            print("=" * 40)
+            print()
+            
+            final_event = None
+            
+            async for event in gateway.stream(request):
+                if event.text_delta:
+                    print(event.text_delta, end="", flush=True)
+                
+                final_event = event
+                
+            print()
+            print()
+            
+            if final_event is not None:
+                print('-' * 40)
+                print("Streaming Metadata")
+                print('-' * 40)
+                
+                print(
+                    f"Finish Reason:    : "
+                    f"{final_event.finish_reason}"
+                    )
+                
+                print(
+                    f"Prompt Tokens     : "
+                    f"{final_event.prompt_tokens}"
+                )
+                
+                print(
+                    f"Completion Tokens     : "
+                    f"{final_event.completion_tokens}"
+                )
+                                
+                print(
+                    f"Total Tokens     : "
+                    f"{final_event.total_tokens}"
+                )
+                
+                print(
+                    f"Time to first token: "
+                    f"{final_event.time_to_first_token_ms:.2f} ms"
+                    if final_event.time_to_first_token_ms is not None
+                    else "Time to first token: Unknown"
+                )
+                
+                print(
+                    f"Total Latency     :"
+                    f"{final_event.elapsed_ms:.2f} ms"
+                )
+            else: # Non-streaming output
+                res = await gateway.generate(req)
+                   
+                print()
+                print("=" * 60)
+                print("MISSION CONTROL - HTTP REQUEST")
+                print("=" * 60)
+                
+                print()
+                print("Response:")
+                print(res.text)
+                
+                if res.reasoning:
+                    print()
+                    print("Reasoning:")
+                    print(res.reasoning)
+                
+                print()
+                print('-' * 60)
+                print("Inference Metadata")
+                print('-' * 60)
+                
+                print(f"Request ID       : {res.request_id}")
+                print(f"Model            : {res.model}")
+                print(f"Finish reason    : {res.finish_reason}")
+                print(f"Prompt tokens    : {res.prompt_tokens}")
+                print(f"Completion tokens: {res.completion_tokens}")
+                print(f"Total tokens     : {res.total_tokens}")
+                print(f"Latency          : {res.latency_ms:.2f} ms")
     
     except ModelGatewayError as exc:
         print()
