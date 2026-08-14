@@ -56,7 +56,7 @@ async def run_inference(
                     print(event.text_delta, end="", flush=True)
                 
                 final_event = event
-                
+            
             print()
             print()
             

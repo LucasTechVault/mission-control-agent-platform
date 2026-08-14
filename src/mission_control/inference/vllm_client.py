@@ -351,7 +351,7 @@ class VLLMModelGateway:
                             )
                             
                             yield ModelStreamEvent(
-                                request=request.request_id,
+                                request_id=request.request_id,
                                 model=model_name,
                                 finish_reason=finish_reason,
                                 prompt_tokens=prompt_tokens,
