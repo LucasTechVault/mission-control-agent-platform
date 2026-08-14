@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -51,4 +51,9 @@ class ModelRequest(BaseModel):
     enable_thinking: bool = Field(
         default=False
     )
+    
+    # Optional structured-output contract
+    response_schema: dict[str, Any] | None = None
+    
+    response_schema_name: str | None = None
     
