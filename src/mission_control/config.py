@@ -13,9 +13,18 @@ class Settings(BaseSettings):
         extra="ignore",
     )
     
-    inference_base_url: AnyHttpUrl = "http://127.0.0.1:18001/v1"
-    model_name: str = "Qwen/Qwen3.5-14B"
-    request_timeout_seconds: float = 60.
+    inference_base_url: AnyHttpUrl = "http://127.0.0.1:8000/v1"
+    #     inference_base_url: AnyHttpUrl = "http://127.0.0.1:18001/v1" for remote
+
+    model_name: str = Field(
+        default="deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
+        alias="VLLM_MODEL_NAME"
+    )
+    
+    request_timeout_seconds: float = Field(
+        default=60.0,
+        alias="VLLM_REQUEST_TIMEOUT"
+    )
 
 @lru_cache
 def get_settings() -> Settings:

@@ -266,6 +266,192 @@ class VLLMModelGateway:
         
         return normalized
     
+    # Implement Streaming
+    async def stream(
+        self,
+        request: ModelRequest,
+    ) -> AsyncIterator[ModelStreamEvent]:
+        
+        url = (
+            f"{str(self._settings.inference_base_url).rstrip('/')}"
+            "/chat/completions"
+        )
+        
+        stream_payload = self._build_payload(
+            request,
+            stream=True,
+        )
+        
+        timeout_seconds = self._timeout_seconds(request)
+        
+        started = time.perf_counter()
+        
+        first_token_ms: float | None = None
+        finish_reason: str | None = None
+        
+        prompt_tokens: int | None = None
+        completion_tokens: int | None = None
+        total_tokens: int | None = None
+        
+        model_name = self._settings.model_name
+        
+        logger.info(
+            "model_stream_started",
+            request_id=request.request_id,
+            model=model_name,
+            max_tokens=request.max_tokens,
+            timeout_seconds=timeout_seconds
+        )
+        
+        try:
+            # Handle request timeout
+            async with asyncio.timeout(timeout_seconds):
+                async with self._client.stream(
+                    "POST",
+                    url,
+                    json=stream_payload,
+                    headers={
+                        "X-Request-ID": request.request_id # uuid for distributed tracing
+                    },
+                ) as response:
+                    if response.is_error:
+                        await response.aread()
+                        
+                        raise ModelHTTPError(
+                            "Inference server returned "
+                            f"HTTP {response.status_code}: "
+                            f"{response.text}"
+                        )
+                    
+                    async for line in response.aiter_lines():
+                        if not line or not line.startswith("data: "):
+                            continue
+                        
+                        data = line.removeprefix("data:").strip()
+                        
+                        # OpenAI-compatible SSE terminator
+                        if data == "[DONE]":
+                            elapsed_ms = (time.perf_counter() - started) * 1000.0
+                            
+                            logger.info(
+                                "model_stream_completed",
+                                request_id=request.request_id,
+                                model=model_name,
+                                finish_reason=finish_reason,
+                                prompt_tokens=prompt_tokens,
+                                completion_tokens=completion_tokens,
+                                total_tokens=total_tokens,
+                                latency_ms=round(elapsed_ms, 2,),
+                                time_to_first_token=(round(first_token_ms, 2) if first_token_ms is not None else None),
+                            )
+                            
+                            yield ModelStreamEvent(
+                                request=request.request_id,
+                                model=model_name,
+                                finish_reason=finish_reason,
+                                prompt_tokens=prompt_tokens,
+                                completion_tokens=completion_tokens,
+                                total_tokens=total_tokens,
+                                elapsed_ms=elapsed_ms,
+                                time_to_first_token_ms=first_token_ms,
+                                done=True,
+                            )
+                            
+                            return
+
+                        try:
+                            chunk = json.loads(data)
+                        
+                        except json.JSONDecodeError as exc:
+                            raise ModelResponseError(
+                                "Inference server returned an invalid streaming event."
+                            ) from exc
+                        
+                        model_name = chunk.get(
+                            "model",
+                            model_name
+                        )
+                        
+                        usage = chunk.get("usage")
+                        
+                        if usage:
+                            prompt_tokens = usage.get("prompt_tokens")
+                            completion_tokens = usage.get("completion_tokens")
+                            total_tokens = usage.get("total_tokens")
+                        
+                        choices = chunk.get("choices") or []
+                        
+                        # Usage-only chunks can have no choices
+                        if not choices:
+                            continue
+                            
+                        choice = choices[0]
+                        
+                        delta = choice.get("delta") or []
+                        
+                        text_delta = delta.get("content")
+                        reasoning_delta = delta.get("reasoning")
+                        
+                        if choice.get("finish_reason"):
+                            finish_reason = choice["finish_reason"]
+                        
+                        if first_token_ms is None and (text_delta or reasoning_delta):
+                            first_token_ms = (time.perf_counter() - started) * 1000.0
+                        
+                        # Don't emit meaningless empty chunks
+                        if not (
+                            text_delta or
+                            reasoning_delta or
+                            choice.get("finish_reason")
+                        ):
+                            continue
+                            
+                        elapsed_ms = (time.perf_counter() - started) * 1000.0
+                        
+                        yield ModelStreamEvent(
+                            request_id=request.request_id,
+                            model=model_name,
+                            text_delta=text_delta,
+                            reasoning_delta=reasoning_delta,
+                            finish_reason=choice.get("finish_reason"),
+                            elapsed_ms=elapsed_ms,
+                            time_to_first_token_ms=first_token_ms,
+                            done=False,
+                        )
+        
+        except TimeoutError as exc:
+            logger.warning(
+                "model_stream_time_out",
+                request_id=request.request_id,
+                timeout_seconds=timeout_seconds
+            )          
+            
+            raise ModelTimeoutError(
+                f"Streaming model request exceeded "
+                f"{timeout_seconds:.2f}s: "
+                f"{request.request_id}"
+            ) from exc
+        
+        except httpx.TimeoutException as exc:
+            raise ModelTimeoutError(
+                f"Inference stream transport timed out:"
+                f"{request.request_id}"
+            ) from exc
+        
+        except asyncio.CancelledError:
+            logger.info(
+                "model_stream_cancelled",
+                request_id=request.request_id,
+                model=model_name,
+            )
+            
+            raise
+        
+        except httpx.RequestError as exc:
+            raise ModelTransportError(
+                f"Inference stream failed: {exc}"
+            ) from exc
+                                    
     # Cleanup - Async Gateway holds network connection open.
     # Need to cleanly shut down when stopping backend server to prevent memory leaks
     async def aclose(self) -> None:
