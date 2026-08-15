@@ -42,6 +42,9 @@ class _ServiceHealthFixture(BaseModel):
     model_config = ConfigDict(extra="forbid")
     services: list[ServiceHealthSnapshot]
 
+# 1 implementation of ServiceHealthProvider
+# Also known as adapter while ServiceHealthProvider is the socket
+# - contains async def get_service_health & returns ServiceHealthSnapshot (all checks out with ServiceHealthProvider Protocol)
 class JsonServiceHealthProvider:
     """_summary_
     Local development adapter for tool-testing, backed by JSON file.
