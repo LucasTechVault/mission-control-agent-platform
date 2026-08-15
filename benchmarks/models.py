@@ -49,5 +49,5 @@ class BenchmarkSummary(BaseModel):
     p50_e2e_latency_ms: float | None
     p95_e2e_latency_ms: float | None
     
-    mean_decode_tokens_per_second: float | None
+    mean_decode_token_per_second: float | None
     
