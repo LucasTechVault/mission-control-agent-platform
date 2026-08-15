@@ -1,0 +1,34 @@
+{
+  "services": [
+    {
+      "service": "onboarding-api",
+      "environment": "prod",
+      "status": "degraded",
+      "error_rate_percent": 11.0,
+      "p95_latency_ms": 842.5,
+      "active_incidents": 1,
+      "observed_at": "2026-08-15T12:00:00+08:00",
+      "source": "mission-control-local-fixture"
+    },
+    {
+      "service": "identity-verification-api",
+      "environment": "prod",
+      "status": "unhealthy",
+      "error_rate_percent": 18.4,
+      "p95_latency_ms": 1340.2,
+      "active_incidents": 2,
+      "observed_at": "2026-08-15T12:00:00+08:00",
+      "source": "mission-control-local-fixture"
+    },
+    {
+      "service": "onboarding-api",
+      "environment": "uat",
+      "status": "healthy",
+      "error_rate_percent": 0.8,
+      "p95_latency_ms": 195.7,
+      "active_incidents": 0,
+      "observed_at": "2026-08-15T12:00:00+08:00",
+      "source": "mission-control-local-fixture"
+    }
+  ]
+}
