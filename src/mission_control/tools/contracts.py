@@ -52,4 +52,30 @@ class ToolDefinition(BaseModel):
     side_effect: ToolSideEffect = ToolSideEffect.NONE
     
     strict: bool = True
+
+class ToolCall(BaseModel):
+    """_summary_
+    Normalized request for tool invocation.
     
+    A ToolCall is a proposal for execution by the LLM.
+    It is not proof that execution has been authorized.
+    
+    Note: Normalized means parsed into defined contract / schema.
+    """
+    
+    model_config = ConfigDict(extra="forbid") # prevent hallucination
+    
+    call_id: str = Field(
+        default_factory=lambda: str(uuid4())
+    )
+    
+    tool_name: str = Field(
+        min_length=1,
+        pattern=r"^[a-zA-Z0-9_-]+$",
+    )
+    
+    arguments: dict[str, Any] = Field(
+        default_factory=dict
+    )
+    
+    parent_request_id: str | None = None
