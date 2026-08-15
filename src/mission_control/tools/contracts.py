@@ -79,3 +79,21 @@ class ToolCall(BaseModel):
     )
     
     parent_request_id: str | None = None
+
+class ToolError(BaseModel):
+    """_summary_
+    Normalized deterministic tool failure.
+    """
+    
+    model_config = ConfigDict(extra="forbid")
+    
+    code: str = Field(
+        min_length=1
+    )
+    
+    message: str = Field(
+        min_length=1
+    )
+    
+    retryable: bool = False
+    
