@@ -24,3 +24,32 @@ class ToolSideEffect(StrEnum):
     NONE = "none"
     READ = "read"
     WRITE = "write"
+
+class ToolDefinition(BaseModel):
+    """_summary_
+    Model-facing description of 1 capability exposed by Mission Control.
+    
+    This is framework-neutral. It is NOT raw vLLM / OpenAI wire representation.
+    """
+    
+    model_config = ConfigDict(extra="forbid") # prevent hallucination of keys
+    
+    name: str = Field(
+        min_length=1,
+        pattern=r"^[a-zA-Z0-9_-]+$",
+        description="Stable identifier used when requesting the tool."
+    )
+    
+    description: str = Field(
+        min_length=1,
+        description="Description used by the model to determine when the tool should be called."
+    )
+    
+    input_schema: dict[str, Any] = Field(
+        description="JSON Schema describing the tool arguments."
+    )
+    
+    side_effect: ToolSideEffect = ToolSideEffect.NONE
+    
+    strict: bool = True
+    
