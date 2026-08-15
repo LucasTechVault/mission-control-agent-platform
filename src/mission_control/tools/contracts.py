@@ -96,4 +96,40 @@ class ToolError(BaseModel):
     )
     
     retryable: bool = False
+
+class ToolExecutionStatus(StrEnum):
+    SUCCESS = "success"
+    ERROR = "error"
+
+class ToolResult(BaseModel):
+    """_summary_
+    Normalized result returned by Mission Control's deterministic execution layer.
+    """
+    
+    model_config = ConfigDict(extra="forbid")
+    
+    call_id: str
+    tool_name: str
+    
+    status: ToolExecutionStatus
+    
+    output: Any | None = None # Possible tool failure, thus no output
+    error: ToolError | None = None # Normalize error, if any
+    
+    duration_ms: float | None = Field(
+        default=None,
+        ge=0.0, # Can't have negative execution time.
+    )
+    
+    @model_validator(mode="after")
+    def validate_result_state(self, ) -> "ToolResult":
+        
+        # Validate contradictory status and error
+        if self.status == ToolExecutionStatus.SUCCESS and self.error is not None:
+            raise ValueError("Successful tool result cannot contain an error.")
+    
+        if self.status == ToolExecutionStatus.ERROR and self.error is None:
+            raise ValueError("Failed tool result must contain an error.")
+        
+        return self
     
