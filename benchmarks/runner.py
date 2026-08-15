@@ -205,7 +205,7 @@ async def run_workload(
     total_output_tokens = sum(sample.completion_tokens or 0 for sample in successful)
     ttfts = [sample.ttft_ms for sample in successful if sample.ttft_ms is not None]
     latencies = [sample.e2e_latency_ms for sample in successful if sample.e2e_latency_ms is not None]
-    decode_rates = [sample.decode_tokens_per_second for sample in successful if sample.decode_token_per_second is not None]
+    decode_rates = [sample.decode_token_per_second for sample in successful if sample.decode_token_per_second is not None]
     
     summary = BenchmarkSummary(
         experiment=experiment,
@@ -219,7 +219,7 @@ async def run_workload(
         p95_ttft_ms=percentile(ttfts, 95),
         p50_e2e_latency_ms=percentile(latencies, 50),
         p95_e2e_latency_ms=percentile(latencies, 95),
-        mean_decode_tokens_per_second=statistics.mean(decode_rates if decode_rates else None),
+        mean_decode_token_per_second=statistics.mean(decode_rates if decode_rates else None),
     )
     
     return samples, summary
