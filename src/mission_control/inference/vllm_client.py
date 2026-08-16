@@ -23,6 +23,20 @@ from mission_control.inference.responses import (
 
 logger = structlog.get_logger(__name__)
 
+# The letter - actual work AI wants to do
+class _VLLMFunctionCall(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    name: str
+    arguments: str
+
+# The Envelope - wrapper that tracks request for system
+class _VLLMToolCall(BaseModel):
+    model_config=ConfigDict(extra="ignore")
+    id: str
+    type: str
+
+    function: _VLLMFunctionCall
+
 # '_' prefix specifies class for internal use only
 # (The Letter)- handles the actual "meat" of the response
 class _VLLMMessage(BaseModel):
@@ -30,6 +44,8 @@ class _VLLMMessage(BaseModel):
     
     content: str | None = None
     reasoning: str | None = None
+    
+    tool_calls: list[_VLLMToolCall] | None = None
 
 # (The Envelope) - LLMs can generate multiple different answers to same prompt (choices)
 # This class wraps the msg & adds a finish reason (success or failure)
@@ -53,7 +69,7 @@ class _VLLMResponse(BaseModel):
     model: str
     choices: list[_VLLMChoice]
     usage: _VLLMUsage
-
+        
 class VLLMModelGateway:
     """Model Gateway backed by vLLM OpenAI-compatible node."""
     
