@@ -1,4 +1,8 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from mission_control.tools.contracts import (
+    ToolCall,
+)
 
 class ModelResponse(BaseModel):
     """
@@ -16,6 +20,8 @@ class ModelResponse(BaseModel):
     reasoning: str | None # Nullable modern LLM's Chain-of-Thought
     finish_reason: str | None # Nullable explanation on why generation stopped
     
+    tool_calls: list[ToolCall] = Field(default_factory=list) # if no tool called, default is empty list
+     
     prompt_tokens: int # num tokens consumed by user
     completion_tokens: int # num tokens model generated in response
     total_tokens: int # prompt + completion tokens
