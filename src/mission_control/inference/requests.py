@@ -1,7 +1,11 @@
 from typing import Literal, Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from mission_control.tools.contracts import (
+    ToolDefinition,
+)
 
 MessageRole = Literal[
     "system",
@@ -62,3 +66,19 @@ class ModelRequest(BaseModel):
         gt=0.0,
     )
     
+    # Tool menu for LLM
+    tool_definitions: list[ToolDefinition] = Field(default_factory=list)
+    
+    # Control Agent's autonomy - whether model allowed to use tool or not
+    tool_choice: Literal[
+        "none",
+        "auto",
+        "required"
+    ] = "none"
+    
+    # Runs after Pydantic builds ModelRequest
+    @model_validator(mode="after")
+    def validate_tool_configuration(self) -> "ModelRequest": # Force model to use tool but did not provide any tool
+        if self.tool_choice != "none" and not self.tool_definitions:
+            raise ValueError("tool_choice requires at least one tool definition.")
+        return self

@@ -151,6 +151,9 @@ class ToolExecutor:
         retryable: bool,
     ) -> ToolResult:
         duration_ms = (time.perf_counter() - started) * 1000.0
+        
+        # Error itself is a result in LLM loop
+        # Let agent reason about invalid arguments / invalid execution
         return ToolResult(
             call_id=call.call_id,
             tool_name=call.tool_name,
