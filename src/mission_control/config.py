@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     )
 
     model_name: str = (
-        "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"
+        "Qwen/Qwen3.5-9B"
     )
 
     request_timeout_seconds: float = 60.0
