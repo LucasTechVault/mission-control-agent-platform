@@ -136,6 +136,22 @@ class VLLMModelGateway:
                 },
             }
         
+        # M02-I04 - Ensure outbound requests (with tool call) perfectly formatted
+        if request.tool_definitions:
+            payload["tools"] = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": definition.name,
+                        "description": definition.description,
+                        "parameters": definition.input_schema,
+                        "strict": definition.strict
+                    },
+                } for definition in request.tool_definitions
+            ]
+            
+            payload["tool_choice"] = request.tool_choice
+        
         # Handle streaming
         if stream:
             payload["stream_options"] = {
