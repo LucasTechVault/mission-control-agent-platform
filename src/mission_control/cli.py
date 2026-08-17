@@ -5,6 +5,7 @@ from mission_control.config import get_settings
 from mission_control.inference.gateway import ModelGatewayError
 from mission_control.inference.requests import ModelMessage, ModelRequest
 from mission_control.inference.vllm_client import VLLMModelGateway
+from mission_control.tools.runtime import execute_one_tool_request
 
 async def run_inference(
     prompt: str,
@@ -12,6 +13,7 @@ async def run_inference(
     stream: bool,
     timeout: float | None,
     max_tokens: int,
+    tool_test: bool,
     ) -> None:
     """Send 1 prompt through Mission Control's inference boundary"""
     
@@ -21,6 +23,58 @@ async def run_inference(
         settings=settings
     )
     
+    # Tool Test (via tool-test flag)
+    if tool_test:
+
+        trace = await execute_one_tool_request(
+            gateway=gateway,
+            prompt=prompt,
+            timeout_seconds=(
+                timeout
+                if timeout is not None
+                else settings.request_timeout_seconds
+            ),
+        )
+
+        print()
+        print("=" * 60)
+        print("MISSION CONTROL — LIVE TOOL CALL")
+        print("=" * 60)
+
+        print()
+        print("MODEL")
+        print("-" * 60)
+        print(trace.model)
+
+        print()
+        print("REQUEST ID")
+        print("-" * 60)
+        print(trace.request_id)
+
+        print()
+        print("MODEL TOOL REQUEST")
+        print("-" * 60)
+
+        print(
+            trace.tool_call.model_dump_json(
+                indent=2
+            )
+        )
+
+        print()
+        print("CONTROLLED TOOL RESULT")
+        print("-" * 60)
+
+        print(
+            trace.tool_result.model_dump_json(
+                indent=2
+            )
+        )
+
+        return
+    
+    
+    # Normal Request
     req = ModelRequest(
         messages=[
             ModelMessage(
@@ -173,6 +227,16 @@ def main() -> None:
         help="Maximum number of generated tokens."
     )
     
+    parser.add_argument(
+    "--tool-test",
+    action="store_true",
+    help=(
+        "Run one live model-requested tool call "
+        "through Mission Control's controlled "
+        "execution boundary."
+    ),
+)
+    
     args = parser.parse_args()
     
     try:
@@ -182,6 +246,7 @@ def main() -> None:
                     stream=args.stream,
                     timeout=args.timeout,
                     max_tokens=args.max_tokens,
+                    tool_test=args.tool_test
                     )
         )
         
