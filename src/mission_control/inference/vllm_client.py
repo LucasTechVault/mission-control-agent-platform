@@ -21,6 +21,10 @@ from mission_control.inference.responses import (
     ModelStreamEvent,
 )
 
+from mission_control.tools.contracts import (
+    ToolCall,
+)
+
 logger = structlog.get_logger(__name__)
 
 # The letter - actual work AI wants to do
@@ -278,12 +282,34 @@ class VLLMModelGateway:
         # 3.2 Normalize - Extract desired from raw response
         choice = raw.choices[0]
         
+        # 4. Handle ToolCall Response (if ToolCall response)
+        normalized_tool_calls: list[ToolCall] = []
+        
+        for raw_tool_call in choice.message.tool_calls or []:
+            try:
+                arguments = json.loads(raw_tool_call.function.arguments)
+            except json.JSONDecodeError as exc:
+                raise ModelResponseError(f"Model returned invalid JSON. Arguments for tool: {raw_tool_call.function.name!r}.")
+            
+            # Guard against tool call hallucation
+            if not isinstance(arguments, dict):
+                raise ModelResponseError("Tools arguments must decode to JSON object.")
+
+            normalized_tool_calls.append(
+                ToolCall(
+                    call_id=raw_tool_call.id,
+                    tool_name=raw_tool_call.function.name,
+                    arguments=arguments,
+                    parent_request_id=request.request_id)
+                )
+        
         normalized = ModelResponse(
             request_id=request.request_id,
             model=raw.model,
             text=choice.message.content,
             reasoning=choice.message.reasoning,
             finish_reason=choice.finish_reason,
+            tool_calls=normalized_tool_calls,
             prompt_tokens=raw.usage.prompt_tokens,
             completion_tokens=raw.usage.completion_tokens,
             total_tokens=raw.usage.total_tokens,
