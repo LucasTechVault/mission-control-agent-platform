@@ -101,7 +101,7 @@ class ManualAgentLoop:
             response = await self._gateway.generate(request)
             
             # 2 Handle Action (ToolCall) Proposal
-            if response.tool_call:
+            if response.tool_calls:
                 logger.info(
                     "agent_actions_requested",
                     model_turn=model_turn,
@@ -141,8 +141,8 @@ class ManualAgentLoop:
                         )
                     )
                     
-                    # Repeat for other tools - Sequential for now
-                    continue
+                # Finished executing ALL tools requested during model turn
+                continue
                 
             # 2.3 - After executing toolcall, if model has final response, means completed
             if response.text and response.text.strip():

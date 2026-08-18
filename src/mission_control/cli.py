@@ -284,7 +284,8 @@ def main() -> None:
                     stream=args.stream,
                     timeout=args.timeout,
                     max_tokens=args.max_tokens,
-                    tool_test=args.tool_test
+                    tool_test=args.tool_test,
+                    agent=args.agent,
                     )
         )
         
