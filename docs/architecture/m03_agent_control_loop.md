@@ -27,3 +27,40 @@ One model turn will be zero or one tool.
 
 MC-AGENT-010
 A model turn with no tool calls and valid final text terminates the initial manual loop.
+
+## Typical Production Architecture for Agent Runtime
+
+```
+                        USER OBJECTIVE
+                              │
+                              ▼
+                        Runtime State
+                              │
+                              ▼
+                       Context Builder
+                              │
+                              ▼
+                           MODEL
+                              │
+                       structured output
+                     /                  \
+                    /                    \
+              ToolCall(s)              Final
+                  │                       │
+                  ▼                       ▼
+              Validation                DONE
+                  │
+              Authorization
+                  │
+               Executor
+                  │
+              ToolResult
+                  │
+              Observation
+                  │
+              State update
+                  │
+            Budget / policy
+                  │
+             another turn
+```
