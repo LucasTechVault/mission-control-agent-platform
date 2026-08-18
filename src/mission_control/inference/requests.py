@@ -1,7 +1,7 @@
-from typing import Literal, Any, ConfigDict
+from typing import Literal, Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 
 from mission_control.tools.contracts import (
     ToolDefinition,

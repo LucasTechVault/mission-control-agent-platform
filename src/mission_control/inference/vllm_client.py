@@ -119,8 +119,7 @@ class VLLMModelGateway:
         payload = {
             "model": self._settings.model_name,
             "messages": [
-                msg.model_dump()
-                for msg in request.messages # convert Pydantic Obj models to Plain dict for serdes
+                self._serialize_message(msg) for msg in request.messages # convert Pydantic Obj models to Plain dict for serdes
             ],
             "temperature": request.temperature,
             "top_p": request.top_p,
@@ -213,7 +212,7 @@ class VLLMModelGateway:
             "/chat/completions"
         )
         
-        payload = self._serialize_message(request, stream=False)
+        payload = self._build_payload(request, stream=False)
         timeout_seconds = self._timeout_seconds(request)
         
         logger.info(

@@ -19,6 +19,7 @@ async def run_inference(
     timeout: float | None,
     max_tokens: int,
     tool_test: bool,
+    agent: bool,
     ) -> None:
     """Send 1 prompt through Mission Control's inference boundary"""
     
@@ -28,7 +29,7 @@ async def run_inference(
         settings=settings
     )
     
-    # Tool Test (via tool-test flag)
+    # Tool Test (via tool-test flag) - M02-I04 - Using Mission Control for Tool Calling
     if tool_test:
 
         trace = await execute_one_tool_request(
@@ -78,7 +79,28 @@ async def run_inference(
 
         return
     
-    
+    # Agent Loop - M03-I02 - Implement manual Agent runtime
+    if agent:
+        registry = build_default_tool_registry()
+        executor = ToolExecutor(registry=registry, default_timeout_seconds=10.0)
+        runtime = ManualAgentLoop(
+            gateway=gateway,
+            registry=registry,
+            executor=executor,
+            model_max_tokens=max_tokens,
+            model_timeout_seconds=timeout if timeout is not None else settings.request_timeout_seconds
+        )
+        
+        final_answer = await runtime.run(objective=prompt)
+        print()
+        print("=" * 60)
+        print("MISSION CONTROL — FINAL ANSWER")
+        print("=" * 60)
+        print()
+        print(final_answer)
+
+        return
+        
     # Normal Request
     req = ModelRequest(
         messages=[
