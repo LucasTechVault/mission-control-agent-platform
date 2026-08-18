@@ -141,10 +141,10 @@ class ManualAgentLoop:
                         )
                     )
                     
-                # Finished executing ALL tools requested during model turn
+                # Finished executing ALL tools requested during model turn, rerun prompt but with context information
                 continue
                 
-            # 2.3 - After executing toolcall, if model has final response, means completed
+            # 3 - response is not toolcall but final response
             if response.text and response.text.strip():
                 logger.info(
                     "agent_run_completed",
