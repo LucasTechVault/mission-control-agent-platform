@@ -80,7 +80,7 @@ class ModelMessage(BaseModel):
             if self.tool_calls:
                 raise ValueError("Tool message cannot contain new tool calls.")
         
-        return self
+        return self # Returns the object that was being checked, else will be None
 
         
 class ModelRequest(BaseModel):

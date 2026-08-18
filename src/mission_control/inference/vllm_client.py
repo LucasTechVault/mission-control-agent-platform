@@ -15,7 +15,11 @@ from mission_control.inference.gateway import (
     ModelTransportError,
     ModelTimeoutError
 )
-from mission_control.inference.requests import ModelRequest
+from mission_control.inference.requests import (
+    ModelMessage,
+    ModelRequest,
+)
+
 from mission_control.inference.responses import (
     ModelResponse,
     ModelStreamEvent,
@@ -164,6 +168,40 @@ class VLLMModelGateway:
         
         return payload
     
+    # M03-I02 - For Agent - Serialize ToolCall History to vLLM standard
+    def _serialize_message(
+        self,
+        message: ModelMessage,
+    ) -> dict:
+        # 1. Serialize tool role message
+        if message.role == "tool":
+            return {
+                "role": "tool",
+                "tool_call_id": message.tool_call_id,
+                "content": message.content,
+            }
+        
+        # 2. Serialize Normal User / Assistant msg
+        serialized: dict = {
+            "role": message.role,
+            "content": message.content,
+        }
+        
+        # 3. Serialize Assistant model action proposals
+        if message.role == "assistant" and message.tool_calls:
+            serialized["tool_calls"] = [
+                {
+                    "id": call.call_id,
+                    "type": "function",
+                    "function": {
+                        "name": call.tool_name,
+                        "arguments": json.dumps(call.arguments, separators=(',',':'))
+                } 
+            } for call in message.tool_calls
+            ] 
+        
+        return serialized
+    
     async def generate(
         self,
         request: ModelRequest,
@@ -175,7 +213,7 @@ class VLLMModelGateway:
             "/chat/completions"
         )
         
-        payload = self._build_payload(request, stream=False)
+        payload = self._serialize_message(request, stream=False)
         timeout_seconds = self._timeout_seconds(request)
         
         logger.info(
