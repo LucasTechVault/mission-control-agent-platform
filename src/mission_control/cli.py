@@ -2,10 +2,15 @@ import argparse
 import asyncio
 
 from mission_control.config import get_settings
+
 from mission_control.inference.gateway import ModelGatewayError
 from mission_control.inference.requests import ModelMessage, ModelRequest
 from mission_control.inference.vllm_client import VLLMModelGateway
-from mission_control.tools.runtime import execute_one_tool_request
+
+from mission_control.tools.executor import ToolExecutor
+from mission_control.tools.runtime import execute_one_tool_request, build_default_tool_registry
+
+from mission_control.agent.loop import ManualAgentLoop
 
 async def run_inference(
     prompt: str,
@@ -227,15 +232,26 @@ def main() -> None:
         help="Maximum number of generated tokens."
     )
     
+    # For Tool Call M02-I04 - Introduce LLM to perform Tool Calling
     parser.add_argument(
-    "--tool-test",
-    action="store_true",
-    help=(
-        "Run one live model-requested tool call "
-        "through Mission Control's controlled "
-        "execution boundary."
-    ),
-)
+        "--tool-test",
+        action="store_true",
+        help=(
+            "Run one live model-requested tool call "
+            "through Mission Control's controlled "
+            "execution boundary."
+        ),
+    )
+    
+    # For Manual Agent Runtime M03-I02 - Implement own Manual Agent Runtime
+    parser.add_argument(
+        "--agent",
+        action="store_true",
+        help=(
+            "Run the first manual Mission Control "
+            "agent loop."
+        ),
+    )
     
     args = parser.parse_args()
     
