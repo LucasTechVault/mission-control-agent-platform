@@ -1,4 +1,4 @@
-from typing import Literal, Any
+from typing import Literal, Any, ConfigDict
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, model_validator
@@ -7,18 +7,82 @@ from mission_control.tools.contracts import (
     ToolDefinition,
 )
 
+from mission_control.tools.contracts import (
+    ToolCall,
+    ToolDefinition,
+)
+
 MessageRole = Literal[
     "system",
     "user",
-    "assistant"
+    "assistant",
+    "tool"
 ]
 
 class ModelMessage(BaseModel):
-    """A single message provided to a chat model."""
+    """
+    Framework neutral message stored by Mission Control.
+    
+    Assistant message may contain model-proposed ToolCalls.
+    
+    Tool messages carry deterministic observations (ToolResult) produced by Mission Control.
+    """
+    
+    model_config = ConfigDict(extra="forbid")
     
     role: MessageRole
-    content: str = Field(min_length=1)
+    
+    content: str | None = None
+    
+    tool_calls: list[ToolCall] = Field(default_factory=list) # AI proposal for ToolCall(s)
+    
+    tool_call_id: str | None = None
+    
+    @model_validator(mode="after")
+    def validate_message_shape(self) -> "ModelMessage": # Python forward reference
+        has_content = bool(self.content and self.content.strip())
+        
+        # 1. System / User role message validation
+        if self.role in {"system", "user"}:
+            # 1.1 Empty content validation
+            if not has_content:
+                raise ValueError(f"{self.role} message requires content.")
+            
+            # 1.2 toolcall guard - system & user cannot call tools
+            if self.tool_calls:
+                raise ValueError(f"{self.role} message cannot contain tool calls.")
+        
+            if self.tool_call_id is not None:
+                raise ValueError(f"{self.role} message cannot contain tool_call_id.")
+        
+        # 2. Assistant role message validation
+        elif self.role == "assistant":
+            
+            # 2.1 - no message AND no tool call
+            if not has_content and not self.tool_calls:
+                raise ValueError("Assistant message requires either content or tool call proposal.")
 
+            # 2.2 - tool_call_id protection - 1 Assistant can have MANY tool calls
+            # IDs must reside within ToolCall obj, not in ModelMessage 
+            if self.tool_call_id is not None:
+                raise ValueError("Assistant message cannot contain tool_call_id.")
+        
+        # 3. Tool message validation
+        elif self.role == "tool":
+            if not has_content:
+                raise ValueError("Tool message requires content.")
+            
+            # 3.1 tool_call uuid to map between ToolCall & ToolResult
+            if self.tool_call_id is None:
+                raise ValueError("Tool message requires tool_call_id.")
+
+            # 3.2 recursive tool call - tool calling other tools
+            if self.tool_calls:
+                raise ValueError("Tool message cannot contain new tool calls.")
+        
+        return self
+
+        
 class ModelRequest(BaseModel):
     """Mission Control's internal contract for 1 model generation."""
     
